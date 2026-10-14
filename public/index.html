@@ -1,1 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ee4d2d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Cek Resi SPX Express</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(160deg,#ee4d2d 0%,#f05a28 60%,#ff7a45 100%);min-height:100vh;padding:12px;color:#333}
+    .container{max-width:480px;margin:0 auto}
+    .card{background:#fff;border-radius:18px;padding:18px 16px;box-shadow:0 12px 32px rgba(0,0,0,.18);margin-bottom:12px}
+    .header{text-align:center;margin-bottom:14px}
+    .header h1{font-size:20px;color:#ee4d2d;font-weight:700}
+    .header p{font-size:12px;color:#777;margin-top:2px}
+    .tabs{display:flex;gap:6px;margin-bottom:14px}
+    .tab{flex:1;padding:10px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#f5f5f5;color:#555}
+    .tab.active{background:#ee4d2d;color:#fff}
+    label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#444}
+    .input-group{display:flex;gap:8px;margin-bottom:10px}
+    input[type=text]{flex:1;padding:13px 12px;border:2px solid #eee;border-radius:12px;font-size:16px;outline:none;background:#fafafa}
+    input[type=text]:focus{border-color:#ee4d2d;background:#fff}
+    .btn{border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+    .btn-primary{background:#ee4d2d;color:#fff;padding:13px 16px;width:100%;margin-top:4px}
+    .btn-primary:disabled{opacity:.6;cursor:not-allowed}
+    .btn-outline{background:#f5f5f5;color:#333;padding:11px 12px;flex:1}
+    .btn-scan{background:#1a1a1a;color:#fff;width:50px;font-size:18px;flex-shrink:0}
+    .btn-row{display:flex;gap:8px;margin-top:8px}
+    #reader{width:100%;border-radius:12px;overflow:hidden;margin-top:10px;display:none}
+    #reader.show{display:block}
+    .scanner-controls{display:none;margin-top:8px}
+    .scanner-controls.show{display:block}
+    .result{display:none;margin-top:14px}
+    .result.show{display:block}
+    .status-box{background:#f8f9fa;border-radius:12px;padding:12px;margin-bottom:8px}
+    .status-title{font-size:11px;color:#888;margin-bottom:2px}
+    .status-value{font-size:15px;font-weight:600;word-break:break-all}
+    .timeline-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #eee}
+    .timeline-item:last-child{border-bottom:none}
+    .dot{width:8px;height:8px;background:#ee4d2d;border-radius:50%;margin-top:5px;flex-shrink:0}
+    .timeline-time{font-size:11px;color:#999}
+    .timeline-msg{font-size:13px;color:#333;margin-top:1px}
+    .error-box{background:#fff5f3;border:1px solid #ffd0c7;color:#c0392b;padding:12px;border-radius:12px;font-size:13px;text-align:center;line-height:1.45}
+    .loading{text-align:center;padding:16px;color:#666;display:none;font-size:14px}
+    .loading.show{display:block}
+    .hint{font-size:12px;color:#888;text-align:center;margin-top:10px;line-height:1.4}
+    .mode-info{background:#fff8f0;border:1px solid #ffe0b2;border-radius:10px;padding:8px 10px;font-size:12px;color:#e65100;text-align:center;margin-bottom:12px}
+    .history-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;cursor:pointer}
+    .history-item:last-child{border-bottom:none}
+    .history-resi{font-weight:600;font-size:14px}
+    .history-meta{font-size:11px;color:#888}
+    .history-status{font-size:11px;padding:3px 8px;border-radius:20px;background:#e8f5e9;color:#2e7d32}
+    .history-status.fail{background:#ffebee;color:#c62828}
+    .empty{text-align:center;color:#999;padding:30px 10px;font-size:14px}
+    .panel{display:none}
+    .panel.active{display:block}
+    .footer{text-align:center;font-size:11px;color:rgba(255,255,255,.85);margin-top:8px}
+    .install-banner{display:none;background:#1a1a1a;color:#fff;padding:10px 14px;border-radius:12px;margin-bottom:12px;font-size:13px;text-align:center}
+    .install-banner.show{display:block}
+    .install-banner button{margin-top:6px;background:#ee4d2d;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="installBanner" class="install-banner">
+      Install aplikasi ini ke HP / PDA<br>
+      <button onclick="installPWA()">Install Sekarang</button>
+    </div>
 
+    <div class="card">
+      <div class="header">
+        <h1>SPX Express Tracker</h1>
+        <p>Render Version • Hasil Langsung di Aplikasi</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="track" onclick="switchTab('track')">Cek Resi</button>
+        <button class="tab" data-tab="history" onclick="switchTab('history')">History</button>
+      </div>
+
+      <div id="panel-track" class="panel active">
+        <div class="mode-info">Mode PDA aktif • Tembak barcode ke input</div>
+        <label for="resi">Nomor Resi SPX</label>
+        <div class="input-group">
+          <input type="text" id="resi" placeholder="Tembak barcode di sini..." autocomplete="off" autofocus>
+          <button class="btn btn-scan" onclick="toggleScanner()">📷</button>
+        </div>
+        <div id="reader"></div>
+        <div class="scanner-controls" id="scannerControls">
+          <button class="btn btn-outline" style="width:100%" onclick="stopScanner()">Tutup Kamera</button>
+        </div>
+        <button class="btn btn-primary" id="btnTrack" onclick="trackResi()">Cek Resi</button>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="trackOfficial()">Situs Resmi</button>
+          <button class="btn btn-outline" onclick="clearResi()">Clear</button>
+        </div>
+        <p class="hint">PDA: tembak barcode → otomatis cek<br>Hasil muncul langsung di aplikasi</p>
+        <div class="loading" id="loading">Sedang mengambil data...</div>
+        <div class="result" id="result"></div>
+      </div>
+
+      <div id="panel-history" class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong style="font-size:14px">Riwayat Pengecekan</strong>
+          <button class="btn btn-outline" style="padding:6px 12px;font-size:12px" onclick="clearHistory()">Hapus Semua</button>
+        </div>
+        <div id="historyList"><div class="empty">Belum ada history</div></div>
+      </div>
+    </div>
+    <div class="footer">Cek Resi SPX • Powered by Render</div>
+  </div>
+
+  <script>
+    let html5QrCode=null,isScanning=false,deferredPrompt=null;
+    const HISTORY_KEY='spx_history_render';
+
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('installBanner').classList.add('show')});
+    async function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();const{outcome}=await deferredPrompt.userChoice;if(outcome==='accepted')document.getElementById('installBanner').classList.remove('show');deferredPrompt=null}
+    if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(console.error);
+
+    function switchTab(name){
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+      document.getElementById(`panel-${name}`).classList.add('active');
+      if(name==='history')loadHistory();
+      if(name==='track')setTimeout(()=>document.getElementById('resi').focus(),100);
+    }
+
+    function cleanResi(t){if(!t)return'';let c=String(t).trim().toUpperCase();const m=c.match(/SPX[A-Z0-9]{8,}/i);return m?m[0].toUpperCase():c.replace(/[^A-Z0-9]/g,'')}
+    function clearResi(){document.getElementById('resi').value='';document.getElementById('resi').focus();document.getElementById('result').classList.remove('show');document.getElementById('result').innerHTML=''}
+
+    const resiInput=document.getElementById('resi');
+    let lastScanTime=0,buffer='',bufferTimer=null;
+    resiInput.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();const c=cleanResi(this.value);this.value=c;if(c.length>=8)trackResi()}});
+    resiInput.addEventListener('keypress',function(e){const now=Date.now();if(now-lastScanTime>80)buffer='';lastScanTime=now;if(e.key.length===1)buffer+=e.key;clearTimeout(bufferTimer);bufferTimer=setTimeout(()=>{if(buffer.length>=10){const c=cleanResi(buffer);if(c.length>=8){resiInput.value=c;trackResi()}}buffer=''},150)});
+    document.addEventListener('click',e=>{if(e.target.tagName!=='BUTTON'&&e.target.tagName!=='INPUT'&&!e.target.closest('.tabs'))setTimeout(()=>resiInput.focus(),50)});
+    window.addEventListener('load',()=>resiInput.focus());
+
+    function toggleScanner(){isScanning?stopScanner():startScanner()}
+    function startScanner(){
+      document.getElementById('reader').classList.add('show');
+      document.getElementById('scannerControls').classList.add('show');
+      html5QrCode=new Html5Qrcode("reader");
+      html5QrCode.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:140},aspectRatio:1.6},t=>{document.getElementById('resi').value=cleanResi(t);stopScanner();setTimeout(()=>trackResi(),250)},()=>{}).then(()=>isScanning=true).catch(()=>{alert('Gagal akses kamera');stopScanner()});
+    }
+    function stopScanner(){if(html5QrCode&&isScanning)html5QrCode.stop().then(()=>{html5QrCode.clear();isScanning=false});document.getElementById('reader').classList.remove('show');document.getElementById('scannerControls').classList.remove('show');isScanning=false;setTimeout(()=>resiInput.focus(),200)}
+
+    async function trackResi(){
+      let resi=cleanResi(document.getElementById('resi').value);
+      document.getElementById('resi').value=resi;
+      const resultEl=document.getElementById('result'),loadingEl=document.getElementById('loading'),btn=document.getElementById('btnTrack');
+      if(!resi||resi.length<8){alert('Nomor resi terlalu pendek / tidak valid');resiInput.focus();return}
+      resultEl.classList.remove('show');resultEl.innerHTML='';loadingEl.classList.add('show');btn.disabled=true;
+      try{
+        const r=await fetch(`/api/track?resi=${encodeURIComponent(resi)}`);
+        const j=await r.json();
+        if(j.success&&j.data){renderResult(j.data,resi)}
+        else{resultEl.innerHTML=`<div class="error-box"><strong>${j.message||'Gagal mengambil data'}</strong><br><br>Silakan coba tombol <strong>Situs Resmi</strong>.</div>`;resultEl.classList.add('show')}
+      }catch(e){
+        resultEl.innerHTML=`<div class="error-box"><strong>Gagal terhubung ke server</strong><br><br>Pastikan aplikasi sudah running di Render.</div>`;resultEl.classList.add('show');
+      }
+      loadingEl.classList.remove('show');btn.disabled=false;setTimeout(()=>resiInput.focus(),300);
+    }
+
+    function renderResult(data,resi){
+      const resultEl=document.getElementById('result');
+      const list=data?.data?.tracking_list||data?.data?.tracking||data?.tracking_list||[];
+      const status=data?.data?.status||data?.data?.current_status||data?.message||'Tidak diketahui';
+      let html=`<div class="status-box"><div class="status-title">Nomor Resi</div><div class="status-value">${resi}</div></div><div class="status-box"><div class="status-title">Status Terakhir</div><div class="status-value">${status}</div></div>`;
+      if(list.length>0){html+=`<div style="margin-top:6px"><strong style="font-size:13px">Riwayat Perjalanan</strong>`;list.forEach(item=>{const time=item.timestamp?new Date(item.timestamp*1000).toLocaleString('id-ID'):(item.time||item.date||'-');const msg=item.message||item.status||item.description||'-';html+=`<div class="timeline-item"><div class="dot"></div><div><div class="timeline-time">${time}</div><div class="timeline-msg">${msg}</div></div></div>`});html+=`</div>`}
+      resultEl.innerHTML=html;resultEl.classList.add('show');
+    }
+
+    function trackOfficial(){const resi=cleanResi(document.getElementById('resi').value);if(!resi){alert('Masukkan / tembak nomor resi dulu!');resiInput.focus();return}window.open(`https://spx.co.id/?trackingNumber=${encodeURIComponent(resi)}`,'_blank');setTimeout(()=>resiInput.focus(),500)}
+
+    async function loadHistory(){
+      const list=document.getElementById('historyList');
+      try{
+        const r=await fetch('/api/history');const j=await r.json();const data=j.data||[];
+        if(data.length===0){list.innerHTML=`<div class="empty">Belum ada history</div>`;return}
+        list.innerHTML=data.map(item=>`<div class="history-item" onclick="reuseResi('${item.resi}')"><div><div class="history-resi">${item.resi}</div><div class="history-meta">${new Date(item.time).toLocaleString('id-ID')}</div></div><div class="history-status ${item.success?'':'fail'}">${item.success?'OK':'Gagal'}</div></div>`).join('');
+      }catch{list.innerHTML=`<div class="empty">Gagal memuat history</div>`}
+    }
+    function reuseResi(resi){document.getElementById('resi').value=resi;switchTab('track');setTimeout(()=>trackResi(),200)}
+    async function clearHistory(){if(!confirm('Hapus semua history?'))return;await fetch('/api/history',{method:'DELETE'});loadHistory()}
+  </script>
+</body>
+</html>
