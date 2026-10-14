@@ -1,4 +1,4 @@
-.vercel
-node_modules
+node_modules/
+data/history.json
 .DS_Store
 *.log
