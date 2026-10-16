@@ -1,25 +1,41 @@
-# Cek Resi SPX Express (Render Ready)
+# Cek Resi SPX Express (Cloudflare Pages)
 
 Hasil tracking muncul **langsung di aplikasi**.
 
-## Cara Deploy ke Render.com
+## Struktur Folder (penting)
 
-1. Upload project ini ke GitHub (bisa pakai repo yang sudah ada)
-2. Buka [render.com](https://render.com) → Login (bisa pakai GitHub)
-3. Klik **New +** → **Web Service**
-4. Connect repository kamu
-5. Isi setting:
-   - **Name**: cek-resi-spx (bebas)
-   - **Runtime**: Node
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-6. Klik **Create Web Service**
+```
+cek-resi-spx/                  ← root repository
+├── functions/
+│   └── api/
+│       └── track.js           ← Backend API
+├── index.html                 ← Frontend
+├── manifest.json
+├── sw.js
+├── icon-192.png
+├── icon-512.png
+├── README.md
+└── .gitignore
+```
 
-Tunggu beberapa menit sampai status menjadi **Live**.
+## Cara Deploy ke Cloudflare Pages
+
+1. Upload / ganti semua file di repository GitHub kamu sesuai struktur di atas
+2. Buka [dash.cloudflare.com](https://dash.cloudflare.com) → Login
+3. Masuk ke **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
+4. Pilih repository `cek-resi-spx`
+5. Setting:
+   - **Framework preset**: None
+   - **Build command**: (kosongkan)
+   - **Build output directory**: `/` (atau biarkan kosong)
+6. Klik **Save and Deploy**
+
+Setelah selesai, kamu dapat URL seperti:
+`https://cek-resi-spx.pages.dev`
 
 ## Fitur
 - PDA Scanner ready
 - Scan kamera
-- Hasil tracking langsung di aplikasi
-- History
+- Hasil tracking langsung di aplikasi (via Cloudflare Function)
+- History (localStorage)
 - PWA

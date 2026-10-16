@@ -1,4 +1,4 @@
-node_modules/
-data/history.json
 .DS_Store
+node_modules/
 *.log
+.wrangler/

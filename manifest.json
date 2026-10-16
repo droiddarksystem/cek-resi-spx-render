@@ -1,0 +1,14 @@
+{
+  "name": "Cek Resi SPX Express",
+  "short_name": "SPX Tracker",
+  "description": "Cek resi SPX Express - hasil langsung di aplikasi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ee4d2d",
+  "theme_color": "#ee4d2d",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
