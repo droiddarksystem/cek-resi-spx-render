@@ -5,7 +5,7 @@ function cleanResi(text) {
   if (spx) return spx[0].toUpperCase();
   const to = cleaned.match(/TO[A-Z0-9]{6,}/i);
   if (to) return to[0].toUpperCase();
-  return cleaned.replace(/[^A-Z0-9]/g, '');
+  return cleaned.replace(/[^A-Z0-9\-]/g, '');
 }
 
 async function sha256(message) {
@@ -15,80 +15,156 @@ async function sha256(message) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function handleTrack(request) {
-  const corsHeaders = {
+function corsHeaders(json = true) {
+  const h = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
   };
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+}
 
+async function trackSPX(resi) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const secrets = [
+    'MGViZmZmZTYzZDJhNDgxY2Y1N2ZlN2Q1ZWJkYzlmZDY=',
+    '0ebfffe63d2a481cf57fe7d5ebdc9fd6',
+    'MGViZmZmZTYzZDJhNDgxY2Y1N2ZlN2Q1ZWJkYzlmZDY'
+  ];
+
+  for (const secret of secrets) {
+    try {
+      const raw = resi + timestamp + secret;
+      const hash = await sha256(raw);
+      const apiUrl = `https://spx.co.id/api/v2/fleet_order/tracking/search?sls_tracking_number=${encodeURIComponent(resi)}|${timestamp}${hash}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      if (!response.ok) continue;
+      const data = await response.json();
+      if (data && (data.data || data.retcode === 0)) {
+        return { success: true, courier: 'spx', resi, data };
+      }
+    } catch (e) {}
+  }
+  return {
+    success: false,
+    courier: 'spx',
+    resi,
+    message: 'Gagal mengambil data dari SPX. Silakan coba lagi atau buka situs resmi.',
+    officialUrl: `https://spx.co.id/?trackingNumber=${encodeURIComponent(resi)}`
+  };
+}
+
+async function trackBinderByte(resi, courier, apiKey) {
+  if (!apiKey) {
+    return {
+      success: false,
+      courier,
+      resi,
+      message: 'BINDERBYTE_API_KEY belum diset di Cloudflare. Tambahkan secret dulu.'
+    };
+  }
+
+  const url = `https://api.binderbyte.com/v1/track?api_key=${encodeURIComponent(apiKey)}&courier=${encodeURIComponent(courier)}&awb=${encodeURIComponent(resi)}`;
+  try {
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await response.json();
+
+    // BinderByte: status 200 = sukses
+    if (data && (data.status === 200 || data.status === '200') && data.data) {
+      // Normalisasi ke format mirip SPX agar frontend seragam
+      const summary = data.data.summary || {};
+      const history = data.data.history || [];
+      const tracking_list = history.map(h => ({
+        time: h.date || h.time || '',
+        message: h.desc || h.status || h.message || '',
+        status: h.status || h.desc || ''
+      }));
+
+      return {
+        success: true,
+        courier,
+        resi,
+        data: {
+          data: {
+            status: summary.status || summary.latest || tracking_list[0]?.message || 'OK',
+            current_status: summary.status || '',
+            tracking_list
+          },
+          summary,
+          detail: data.data.detail || {},
+          raw: data
+        }
+      };
+    }
+
+    return {
+      success: false,
+      courier,
+      resi,
+      message: data?.message || data?.msg || 'Resi tidak ditemukan / kurir salah.',
+      binder: data
+    };
+  } catch (err) {
+    return {
+      success: false,
+      courier,
+      resi,
+      message: 'Gagal terhubung ke BinderByte: ' + (err.message || 'error')
+    };
+  }
+}
+
+function detectCourier(resi) {
+  const r = (resi || '').toUpperCase();
+  if (r.startsWith('SPX')) return 'spx';
+  if (r.startsWith('TO')) return 'spx'; // trip SPX internal
+  if (/^JNE/i.test(r) || /^\d{10,16}$/.test(r)) return null; // ambigu, biar user pilih
+  if (/^JP/i.test(r) || /^JT/i.test(r)) return 'jnt';
+  if (/^SCP/i.test(r) || /^SC/i.test(r)) return 'sicepat';
+  return null;
+}
+
+async function handleTrack(request, env) {
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(false) });
   }
 
   try {
     const url = new URL(request.url);
     const resi = cleanResi(url.searchParams.get('resi') || '');
+    let courier = (url.searchParams.get('courier') || 'spx').toLowerCase().trim();
 
-    if (!resi || resi.length < 8) {
+    if (!resi || resi.length < 6) {
       return new Response(JSON.stringify({ success: false, message: 'Nomor resi tidak valid' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: corsHeaders()
       });
     }
 
-    const timestamp = Math.floor(Date.now() / 1000);
-    const secrets = [
-      'MGViZmZmZTYzZDJhNDgxY2Y1N2ZlN2Q1ZWJkYzlmZDY=',
-      '0ebfffe63d2a481cf57fe7d5ebdc9fd6',
-      'MGViZmZmZTYzZDJhNDgxY2Y1N2ZlN2Q1ZWJkYzlmZDY'
-    ];
-
-    let result = null;
-
-    for (const secret of secrets) {
-      try {
-        const raw = resi + timestamp + secret;
-        const hash = await sha256(raw);
-        const apiUrl = `https://spx.co.id/api/v2/fleet_order/tracking/search?sls_tracking_number=${encodeURIComponent(resi)}|${timestamp}${hash}`;
-
-        const response = await fetch(apiUrl, {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        });
-
-        if (!response.ok) continue;
-
-        const data = await response.json();
-        if (data && (data.data || data.retcode === 0)) {
-          result = data;
-          break;
-        }
-      } catch (e) {}
+    if (courier === 'auto') {
+      courier = detectCourier(resi) || 'spx';
     }
 
-    if (result) {
-      return new Response(JSON.stringify({ success: true, resi, data: result }), {
-        headers: corsHeaders,
-      });
+    let result;
+    if (courier === 'spx') {
+      result = await trackSPX(resi);
+    } else {
+      result = await trackBinderByte(resi, courier, env.BINDERBYTE_API_KEY);
     }
 
-    return new Response(JSON.stringify({
-      success: false,
-      resi,
-      message: 'Gagal mengambil data dari SPX. Silakan coba lagi atau buka situs resmi.',
-      officialUrl: `https://spx.co.id/?trackingNumber=${encodeURIComponent(resi)}`
-    }), {
-      headers: corsHeaders,
-    });
-
+    return new Response(JSON.stringify(result), { headers: corsHeaders() });
   } catch (err) {
     return new Response(JSON.stringify({ success: false, message: 'Server error' }), {
       status: 500,
-      headers: corsHeaders,
+      headers: corsHeaders()
     });
   }
 }
@@ -97,17 +173,14 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // API route
     if (url.pathname === '/api/track' || url.pathname === '/api/track/') {
-      return handleTrack(request);
+      return handleTrack(request, env);
     }
 
-    // Serve static assets
     if (env.ASSETS) {
       return env.ASSETS.fetch(request);
     }
 
-    // Fallback
     return new Response('Not Found', { status: 404 });
   }
 };
