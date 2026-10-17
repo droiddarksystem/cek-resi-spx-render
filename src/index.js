@@ -1,8 +1,10 @@
 function cleanResi(text) {
   if (!text) return '';
   let cleaned = String(text).trim().toUpperCase();
-  const match = cleaned.match(/SPX[A-Z0-9]{8,}/i);
-  if (match) return match[0].toUpperCase();
+  const spx = cleaned.match(/SPX[A-Z0-9]{8,}/i);
+  if (spx) return spx[0].toUpperCase();
+  const to = cleaned.match(/TO[A-Z0-9]{6,}/i);
+  if (to) return to[0].toUpperCase();
   return cleaned.replace(/[^A-Z0-9]/g, '');
 }
 
