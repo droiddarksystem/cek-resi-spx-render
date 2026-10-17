@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#ee4d2d">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Cek Resi SPX Express</title>
+  <title>Cek Resi Multi Kurir</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -21,6 +21,8 @@
     .tab{flex:1;padding:10px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#f5f5f5;color:#555}
     .tab.active{background:#ee4d2d;color:#fff}
     label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#444}
+    select{width:100%;padding:12px;border:2px solid #eee;border-radius:12px;font-size:14px;margin-bottom:10px;background:#fafafa;outline:none}
+    select:focus{border-color:#ee4d2d}
     .input-group{display:flex;gap:8px;margin-bottom:10px}
     input[type=text]{flex:1;padding:13px 12px;border:2px solid #eee;border-radius:12px;font-size:16px;outline:none;background:#fafafa}
     input[type=text]:focus{border-color:#ee4d2d;background:#fff}
@@ -73,8 +75,8 @@
 
     <div class="card">
       <div class="header">
-        <h1>SPX Express Tracker</h1>
-        <p>Cloudflare Version • Hasil Langsung di Aplikasi</p>
+        <h1>Cek Resi Multi Kurir</h1>
+        <p>SPX • JNE • J&T • SiCepat • dll</p>
       </div>
 
       <div class="tabs">
@@ -83,10 +85,27 @@
       </div>
 
       <div id="panel-track" class="panel active">
-        <div class="mode-info">Mode PDA aktif • Scan SPXID atau TO</div>
-        <label for="resi">Nomor Resi / TO</label>
+        <div class="mode-info">Mode PDA aktif • Pilih kurir lalu tembak barcode</div>
+
+        <label for="courier">Kurir</label>
+        <select id="courier">
+          <option value="spx">Shopee Express (SPX)</option>
+          <option value="jne">JNE</option>
+          <option value="jnt">J&T Express</option>
+          <option value="sicepat">SiCepat</option>
+          <option value="tiki">TIKI</option>
+          <option value="anteraja">AnterAja</option>
+          <option value="wahana">Wahana</option>
+          <option value="ninja">Ninja Xpress</option>
+          <option value="lion">Lion Parcel</option>
+          <option value="ide">ID Express</option>
+          <option value="sap">SAP Express</option>
+          <option value="pos">POS Indonesia</option>
+        </select>
+
+        <label for="resi">Nomor Resi</label>
         <div class="input-group">
-          <input type="text" id="resi" placeholder="SPXID... atau TO..." autocomplete="off" autofocus>
+          <input type="text" id="resi" placeholder="Tembak / ketik nomor resi..." autocomplete="off" autofocus>
           <button class="btn btn-scan" onclick="toggleScanner()">📷</button>
         </div>
         <div id="reader"></div>
@@ -98,7 +117,7 @@
           <button class="btn btn-outline" onclick="trackOfficial()">Situs Resmi</button>
           <button class="btn btn-outline" onclick="clearResi()">Clear</button>
         </div>
-        <p class="hint">Bisa scan <strong>SPXID</strong> (resi) atau <strong>TO</strong> (trip)<br>PDA: tembak barcode → otomatis cek</p>
+        <p class="hint">SPX pakai API internal • Kurir lain lewat BinderByte<br>PDA: tembak barcode → otomatis cek</p>
         <div class="loading" id="loading">Sedang mengambil data...</div>
         <div class="result" id="result"></div>
       </div>
@@ -111,12 +130,12 @@
         <div id="historyList"><div class="empty">Belum ada history</div></div>
       </div>
     </div>
-    <div class="footer">Cek Resi SPX • Powered by Amos_droid86</div>
+    <div class="footer">Cek Resi Multi Kurir • Powered by Amos_droid86</div>
   </div>
 
   <script>
     let html5QrCode=null,isScanning=false,deferredPrompt=null;
-    const HISTORY_KEY='spx_history_cf';
+    const HISTORY_KEY='spx_history_multi';
 
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('installBanner').classList.add('show')});
     async function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();const{outcome}=await deferredPrompt.userChoice;if(outcome==='accepted')document.getElementById('installBanner').classList.remove('show');deferredPrompt=null}
@@ -134,23 +153,27 @@
     function cleanResi(t){
       if(!t) return '';
       let c = String(t).trim().toUpperCase();
-      // Prioritas: SPXID / SPX... atau TO...
       const spx = c.match(/SPX[A-Z0-9]{8,}/i);
       if (spx) return spx[0].toUpperCase();
       const to = c.match(/TO[A-Z0-9]{6,}/i);
       if (to) return to[0].toUpperCase();
-      // Fallback: hapus karakter aneh
-      return c.replace(/[^A-Z0-9]/g, '');
+      return c.replace(/[^A-Z0-9\-]/g, '');
     }
     function clearResi(){document.getElementById('resi').value='';document.getElementById('resi').focus();document.getElementById('result').classList.remove('show');document.getElementById('result').innerHTML=''}
-    function saveToHistory(resi,success,status){let h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');h.unshift({resi,time:new Date().toISOString(),success,status:status||(success?'Berhasil':'Gagal')});if(h.length>50)h.length=50;localStorage.setItem(HISTORY_KEY,JSON.stringify(h))}
+    function saveToHistory(resi,success,status,courier){let h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');h.unshift({resi,courier:courier||'spx',time:new Date().toISOString(),success,status:status||(success?'Berhasil':'Gagal')});if(h.length>50)h.length=50;localStorage.setItem(HISTORY_KEY,JSON.stringify(h))}
 
     const resiInput=document.getElementById('resi');
     let lastScanTime=0,buffer='',bufferTimer=null;
     resiInput.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();const c=cleanResi(this.value);this.value=c;if(c.length>=6)trackResi()}});
-    resiInput.addEventListener('keypress',function(e){const now=Date.now();if(now-lastScanTime>80)buffer='';lastScanTime=now;if(e.key.length===1)buffer+=e.key;clearTimeout(bufferTimer);bufferTimer=setTimeout(()=>{if(buffer.length>=10){const c=cleanResi(buffer);if(c.length>=8){resiInput.value=c;trackResi()}}buffer=''},150)});
-    document.addEventListener('click',e=>{if(e.target.tagName!=='BUTTON'&&e.target.tagName!=='INPUT'&&!e.target.closest('.tabs'))setTimeout(()=>resiInput.focus(),50)});
+    resiInput.addEventListener('keypress',function(e){const now=Date.now();if(now-lastScanTime>80)buffer='';lastScanTime=now;if(e.key.length===1)buffer+=e.key;clearTimeout(bufferTimer);bufferTimer=setTimeout(()=>{if(buffer.length>=10){const c=cleanResi(buffer);if(c.length>=6){resiInput.value=c;trackResi()}}buffer=''},150)});
+    document.addEventListener('click',e=>{if(e.target.tagName!=='BUTTON'&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'&&!e.target.closest('.tabs'))setTimeout(()=>{if(document.getElementById('panel-track').classList.contains('active'))resiInput.focus()},50)});
     window.addEventListener('load',()=>resiInput.focus());
+
+    // Auto pilih SPX jika input SPXID
+    resiInput.addEventListener('input',function(){
+      const v=this.value.toUpperCase();
+      if(v.startsWith('SPX')) document.getElementById('courier').value='spx';
+    });
 
     function toggleScanner(){isScanning?stopScanner():startScanner()}
     function startScanner(){
@@ -163,45 +186,71 @@
 
     async function trackResi(){
       let resi=cleanResi(document.getElementById('resi').value);
+      const courier=document.getElementById('courier').value;
       document.getElementById('resi').value=resi;
       const resultEl=document.getElementById('result'),loadingEl=document.getElementById('loading'),btn=document.getElementById('btnTrack');
-      if(!resi||resi.length<6){alert('Nomor terlalu pendek / tidak valid');resiInput.focus();return}
-      const isTO = resi.startsWith('TO');
-      const isSPX = resi.startsWith('SPX');
+      if(!resi||resi.length<6){alert('Nomor resi terlalu pendek / tidak valid');resiInput.focus();return}
       resultEl.classList.remove('show');resultEl.innerHTML='';loadingEl.classList.add('show');btn.disabled=true;
       try{
-        const r=await fetch(`/api/track?resi=${encodeURIComponent(resi)}`);
+        const r=await fetch(`/api/track?resi=${encodeURIComponent(resi)}&courier=${encodeURIComponent(courier)}`);
         const j=await r.json();
-        if(j.success&&j.data){renderResult(j.data,resi);saveToHistory(resi,true,j.data?.data?.status||'Berhasil')}
-        else{const tip = resi.startsWith('TO')
-          ? 'Nomor <strong>TO</strong> adalah kode trip internal. API publik biasanya hanya mendukung resi <strong>SPXID</strong>.'
-          : 'Silakan coba tombol <strong>Situs Resmi</strong>.';
-        resultEl.innerHTML=`<div class="error-box"><strong>${j.message||'Gagal mengambil data'}</strong><br><br>${tip}</div>`;
-        resultEl.classList.add('show');saveToHistory(resi,false,'Gagal')}
+        if(j.success&&j.data){renderResult(j,resi,courier);saveToHistory(resi,true,j.data?.data?.status||'Berhasil',courier)}
+        else{
+          resultEl.innerHTML=`<div class="error-box"><strong>${j.message||'Gagal mengambil data'}</strong><br><br>Pastikan nomor resi & kurir sudah benar.<br>Untuk kurir non-SPX, pastikan BINDERBYTE_API_KEY sudah diset.</div>`;
+          resultEl.classList.add('show');saveToHistory(resi,false,'Gagal',courier);
+        }
       }catch(e){
-        resultEl.innerHTML=`<div class="error-box"><strong>Gagal terhubung ke server</strong><br><br>Pastikan koneksi internet stabil atau coba lagi.</div>`;resultEl.classList.add('show');saveToHistory(resi,false,'Error');
+        resultEl.innerHTML=`<div class="error-box"><strong>Gagal terhubung ke server</strong><br><br>Coba lagi nanti.</div>`;
+        resultEl.classList.add('show');saveToHistory(resi,false,'Error',courier);
       }
       loadingEl.classList.remove('show');btn.disabled=false;setTimeout(()=>resiInput.focus(),300);
     }
 
-    function renderResult(data,resi){
+    function renderResult(j,resi,courier){
       const resultEl=document.getElementById('result');
-      const list=data?.data?.tracking_list||data?.data?.tracking||data?.tracking_list||[];
-      const status=data?.data?.status||data?.data?.current_status||data?.message||'Tidak diketahui';
-      let html=`<div class="status-box"><div class="status-title">Nomor Resi</div><div class="status-value">${resi}</div></div><div class="status-box"><div class="status-title">Status Terakhir</div><div class="status-value">${status}</div></div>`;
-      if(list.length>0){html+=`<div style="margin-top:6px"><strong style="font-size:13px">Riwayat Perjalanan</strong>`;list.forEach(item=>{const time=item.timestamp?new Date(item.timestamp*1000).toLocaleString('id-ID'):(item.time||item.date||'-');const msg=item.message||item.status||item.description||'-';html+=`<div class="timeline-item"><div class="dot"></div><div><div class="timeline-time">${time}</div><div class="timeline-msg">${msg}</div></div></div>`});html+=`</div>`}
+      const data=j.data;
+      const list=data?.data?.tracking_list||data?.data?.tracking||[];
+      const status=data?.data?.status||data?.data?.current_status||data?.summary?.status||'Tidak diketahui';
+      const courierName=(courier||j.courier||'spx').toUpperCase();
+      let html=`<div class="status-box"><div class="status-title">Kurir</div><div class="status-value">${courierName}</div></div>
+        <div class="status-box"><div class="status-title">Nomor Resi</div><div class="status-value">${resi}</div></div>
+        <div class="status-box"><div class="status-title">Status Terakhir</div><div class="status-value">${status}</div></div>`;
+      if(list.length>0){
+        html+=`<div style="margin-top:6px"><strong style="font-size:13px">Riwayat Perjalanan</strong>`;
+        list.forEach(item=>{
+          const time=item.timestamp?new Date(item.timestamp*1000).toLocaleString('id-ID'):(item.time||item.date||'-');
+          const msg=item.message||item.status||item.description||'-';
+          html+=`<div class="timeline-item"><div class="dot"></div><div><div class="timeline-time">${time}</div><div class="timeline-msg">${msg}</div></div></div>`;
+        });
+        html+=`</div>`;
+      }
       resultEl.innerHTML=html;resultEl.classList.add('show');
     }
 
-    function trackOfficial(){const resi=cleanResi(document.getElementById('resi').value);if(!resi){alert('Masukkan / tembak nomor resi dulu!');resiInput.focus();return}window.open(`https://spx.co.id/?trackingNumber=${encodeURIComponent(resi)}`,'_blank');setTimeout(()=>resiInput.focus(),500)}
+    function trackOfficial(){
+      const resi=cleanResi(document.getElementById('resi').value);
+      const courier=document.getElementById('courier').value;
+      if(!resi){alert('Masukkan nomor resi dulu!');resiInput.focus();return}
+      const map={
+        spx:`https://spx.co.id/?trackingNumber=${encodeURIComponent(resi)}`,
+        jne:`https://www.jne.co.id/id/tracking/trace`,
+        jnt:`https://jet.co.id/track`,
+        sicepat:`https://www.sicepat.com/checkAwb`,
+        tiki:`https://www.tiki.id/id/tracking`,
+        anteraja:`https://anteraja.id/tracking`,
+        pos:`https://www.posindonesia.co.id/id/tracking`
+      };
+      window.open(map[courier]||map.spx,'_blank');
+      setTimeout(()=>resiInput.focus(),500);
+    }
 
     function loadHistory(){
       const list=document.getElementById('historyList');
       const history=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
       if(history.length===0){list.innerHTML=`<div class="empty">Belum ada history</div>`;return}
-      list.innerHTML=history.map(item=>`<div class="history-item" onclick="reuseResi('${item.resi}')"><div><div class="history-resi">${item.resi}</div><div class="history-meta">${new Date(item.time).toLocaleString('id-ID')}</div></div><div class="history-status ${item.success?'':'fail'}">${item.success?'OK':'Gagal'}</div></div>`).join('');
+      list.innerHTML=history.map(item=>`<div class="history-item" onclick="reuseResi('${item.resi}','${item.courier||'spx'}')"><div><div class="history-resi">${item.resi}</div><div class="history-meta">${(item.courier||'spx').toUpperCase()} • ${new Date(item.time).toLocaleString('id-ID')}</div></div><div class="history-status ${item.success?'':'fail'}">${item.success?'OK':'Gagal'}</div></div>`).join('');
     }
-    function reuseResi(resi){document.getElementById('resi').value=resi;switchTab('track');setTimeout(()=>trackResi(),200)}
+    function reuseResi(resi,courier){document.getElementById('resi').value=resi;if(courier)document.getElementById('courier').value=courier;switchTab('track');setTimeout(()=>trackResi(),200)}
     function clearHistory(){if(!confirm('Hapus semua history?'))return;localStorage.removeItem(HISTORY_KEY);loadHistory()}
   </script>
 </body>
