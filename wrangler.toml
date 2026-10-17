@@ -5,3 +5,6 @@ compatibility_date = "2024-09-23"
 [assets]
 directory = "./public"
 binding = "ASSETS"
+
+# Set secret di Cloudflare dashboard atau:
+# npx wrangler secret put BINDERBYTE_API_KEY
