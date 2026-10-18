@@ -88,6 +88,7 @@ async function trackBinderByte(resi, courier, apiKey) {
         status: h.status || h.desc || ''
       }));
 
+      const detail = data.data.detail || {};
       return {
         success: true,
         courier,
@@ -96,10 +97,15 @@ async function trackBinderByte(resi, courier, apiKey) {
           data: {
             status: summary.status || summary.latest || tracking_list[0]?.message || 'OK',
             current_status: summary.status || '',
-            tracking_list
+            tracking_list,
+            recipient_name: detail.receiver || detail.consignee || summary.receiver || '',
+            phone: detail.phone || '',
+            delivery_type: summary.service || detail.service || '',
+            destination: detail.destination || summary.destination || '',
+            origin: detail.origin || summary.origin || ''
           },
           summary,
-          detail: data.data.detail || {},
+          detail,
           raw: data
         }
       };
