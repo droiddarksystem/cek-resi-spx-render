@@ -8,8 +8,6 @@
   <title>Cek Resi Multi Kurir</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -20,7 +18,7 @@
     .header h1{font-size:20px;color:#ee4d2d;font-weight:700}
     .header p{font-size:12px;color:#777;margin-top:2px}
     .tabs{display:flex;gap:6px;margin-bottom:14px}
-    .tab{flex:1;padding:10px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#f5f5f5;color:#555}
+    .tab{flex:1;padding:10px 6px;border:none;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;background:#f5f5f5;color:#555}
     .tab.active{background:#ee4d2d;color:#fff}
     label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#444}
     select{width:100%;padding:12px;border:2px solid #eee;border-radius:12px;font-size:14px;margin-bottom:10px;background:#fafafa;outline:none}
@@ -28,6 +26,8 @@
     .input-group{display:flex;gap:8px;margin-bottom:10px}
     input[type=text]{flex:1;padding:13px 12px;border:2px solid #eee;border-radius:12px;font-size:16px;outline:none;background:#fafafa}
     input[type=text]:focus{border-color:#ee4d2d;background:#fff}
+    textarea.batch-input{width:100%;min-height:130px;padding:12px;border:2px solid #eee;border-radius:12px;font-size:14px;outline:none;background:#fafafa;resize:vertical;font-family:inherit;line-height:1.4}
+    textarea.batch-input:focus{border-color:#ee4d2d;background:#fff}
     .btn{border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
     .btn-primary{background:#ee4d2d;color:#fff;padding:13px 16px;width:100%;margin-top:4px}
     .btn-primary:disabled{opacity:.6;cursor:not-allowed}
@@ -43,20 +43,11 @@
     .status-box{background:#f8f9fa;border-radius:12px;padding:12px;margin-bottom:8px}
     .status-title{font-size:11px;color:#888;margin-bottom:2px}
     .status-value{font-size:15px;font-weight:600;word-break:break-all}
-    .timeline-item{display:flex;gap:10px;padding:10px 8px;border-bottom:1px solid #eee;border-radius:10px;cursor:pointer;transition:background .15s}
+    .timeline-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #eee}
     .timeline-item:last-child{border-bottom:none}
-    .timeline-item:hover,.timeline-item:active{background:#fff5f3}
-    .timeline-item.has-map .timeline-msg::after{content:' 🗺️';font-size:12px}
     .dot{width:8px;height:8px;background:#ee4d2d;border-radius:50%;margin-top:5px;flex-shrink:0}
     .timeline-time{font-size:11px;color:#999}
     .timeline-msg{font-size:13px;color:#333;margin-top:1px}
-    .map-hint{font-size:11px;color:#ee4d2d;margin-top:4px;font-weight:600}
-    .map-box{display:none;margin:8px 0 12px;border-radius:12px;overflow:hidden;border:1px solid #eee;background:#f8f9fa}
-    .map-box.show{display:block}
-    .map-box .leaflet-map{width:100%;height:240px;z-index:1}
-    .map-box .map-actions{display:flex;gap:8px;padding:8px;background:#fff}
-    .map-box .map-actions a,.map-box .map-actions button{flex:1;text-align:center;padding:8px;border-radius:8px;background:#ee4d2d;color:#fff;text-decoration:none;font-size:12px;font-weight:600;border:none;cursor:pointer}
-    .map-box .map-loading{padding:40px 12px;text-align:center;color:#888;font-size:13px}
     .error-box{background:#fff5f3;border:1px solid #ffd0c7;color:#c0392b;padding:12px;border-radius:12px;font-size:13px;text-align:center;line-height:1.45}
     .loading{text-align:center;padding:16px;color:#666;display:none;font-size:14px}
     .loading.show{display:block}
@@ -75,6 +66,16 @@
     .install-banner{display:none;background:#1a1a1a;color:#fff;padding:10px 14px;border-radius:12px;margin-bottom:12px;font-size:13px;text-align:center}
     .install-banner.show{display:block}
     .install-banner button{margin-top:6px;background:#ee4d2d;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+    .batch-progress{font-size:12px;color:#666;margin:10px 0;text-align:center}
+    .batch-item{border:1px solid #eee;border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fafafa}
+    .batch-item.ok{border-color:#c8e6c9;background:#f1f8f4}
+    .batch-item.fail{border-color:#ffcdd2;background:#fff8f7}
+    .batch-item .bi-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+    .batch-item .bi-resi{font-weight:700;font-size:13px;word-break:break-all}
+    .batch-item .bi-badge{font-size:11px;padding:3px 8px;border-radius:20px;background:#e8f5e9;color:#2e7d32;flex-shrink:0}
+    .batch-item .bi-badge.fail{background:#ffebee;color:#c62828}
+    .batch-item .bi-status{font-size:13px;color:#333;margin-top:2px}
+    .batch-item .bi-meta{font-size:11px;color:#888;margin-top:2px}
   </style>
 </head>
 <body>
@@ -87,17 +88,18 @@
     <div class="card">
       <div class="header">
         <h1>Cek Resi Multi Kurir</h1>
-        <p>SPX • JNE • J&T • SiCepat • dll</p>
+        <p>SPX • JNE • J&T • SiCepat • Batch</p>
       </div>
 
       <div class="tabs">
         <button class="tab active" data-tab="track" onclick="switchTab('track')">Cek Resi</button>
+        <button class="tab" data-tab="batch" onclick="switchTab('batch')">Batch</button>
         <button class="tab" data-tab="history" onclick="switchTab('history')">History</button>
       </div>
 
+      <!-- TRACK -->
       <div id="panel-track" class="panel active">
         <div class="mode-info">Mode PDA aktif • Pilih kurir lalu tembak barcode</div>
-
         <label for="courier">Kurir</label>
         <select id="courier">
           <option value="spx">Shopee Express (SPX)</option>
@@ -113,7 +115,6 @@
           <option value="sap">SAP Express</option>
           <option value="pos">POS Indonesia</option>
         </select>
-
         <label for="resi">Nomor Resi</label>
         <div class="input-group">
           <input type="text" id="resi" placeholder="Tembak / ketik nomor resi..." autocomplete="off" autofocus>
@@ -128,11 +129,48 @@
           <button class="btn btn-outline" onclick="trackOfficial()">Situs Resmi</button>
           <button class="btn btn-outline" onclick="clearResi()">Clear</button>
         </div>
-        <p class="hint">SPX pakai API internal • Kurir lain lewat BinderByte<br>PDA: tembak barcode → otomatis cek</p>
+        <p class="hint">SPX: API internal • Kurir lain: BinderByte<br>PDA: tembak barcode → otomatis cek</p>
         <div class="loading" id="loading">Sedang mengambil data...</div>
         <div class="result" id="result"></div>
       </div>
 
+      <!-- BATCH -->
+      <div id="panel-batch" class="panel">
+        <div class="mode-info">Tempel banyak resi — satu baris satu nomor</div>
+        <label for="batchCourier">Kurir default</label>
+        <select id="batchCourier">
+          <option value="spx">Shopee Express (SPX)</option>
+          <option value="jne">JNE</option>
+          <option value="jnt">J&T Express</option>
+          <option value="sicepat">SiCepat</option>
+          <option value="tiki">TIKI</option>
+          <option value="anteraja">AnterAja</option>
+          <option value="wahana">Wahana</option>
+          <option value="ninja">Ninja Xpress</option>
+          <option value="lion">Lion Parcel</option>
+          <option value="ide">ID Express</option>
+          <option value="sap">SAP Express</option>
+          <option value="pos">POS Indonesia</option>
+        </select>
+        <label for="batchList">Daftar Resi</label>
+        <textarea id="batchList" class="batch-input" placeholder="SPXID06951537118A&#10;SPXID06939164678A&#10;JT1234567890"></textarea>
+        <div id="batchReader" style="width:100%;border-radius:12px;overflow:hidden;margin-top:10px;display:none"></div>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="btn btn-outline" id="btnBatchScan" onclick="toggleBatchScanner()">📷 Scan Terus</button>
+          <button class="btn btn-outline" id="btnBatchScanStop" style="display:none" onclick="stopBatchScanner()">Stop Kamera</button>
+        </div>
+        <p class="hint" id="batchScanHint" style="margin-top:6px">Scan kamera: setiap barcode otomatis ditambah ke daftar</p>
+        <button class="btn btn-primary" id="btnBatch" onclick="runBatch()">Cek Semua</button>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="clearBatch()">Clear</button>
+          <button class="btn btn-outline" onclick="copyBatchResults()">Salin Hasil</button>
+        </div>
+        <div class="batch-progress" id="batchProgress"></div>
+        <div id="batchResults"></div>
+        <p class="hint">Resi berawalan SPX/TO otomatis memakai kurir SPX<br>Disarankan max ±30 resi per batch</p>
+      </div>
+
+      <!-- HISTORY -->
       <div id="panel-history" class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <strong style="font-size:14px">Riwayat Pengecekan</strong>
@@ -145,208 +183,165 @@
   </div>
 
   <script>
-    let html5QrCode=null,isScanning=false,deferredPrompt=null;
+    let html5QrCode=null,isScanning=false,deferredPrompt=null,batchRunning=false,lastBatchSummary='';
     const HISTORY_KEY='spx_history_multi';
 
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('installBanner').classList.add('show')});
     async function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();const{outcome}=await deferredPrompt.userChoice;if(outcome==='accepted')document.getElementById('installBanner').classList.remove('show');deferredPrompt=null}
-    if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(console.error);
+    if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
     function switchTab(name){
       document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
       document.querySelector(`[data-tab="${name}"]`).classList.add('active');
       document.getElementById(`panel-${name}`).classList.add('active');
-      if(name==='history')loadHistory();
-      if(name==='track')setTimeout(()=>document.getElementById('resi').focus(),100);
+      if(name!=='batch') try{ stopBatchScanner(); }catch(e){}
+      if(name!=='track') try{ stopScanner(); }catch(e){}
+      if(name==='history') loadHistory();
+      if(name==='track') setTimeout(()=>document.getElementById('resi').focus(),100);
     }
 
     function cleanResi(t){
       if(!t) return '';
-      let c = String(t).trim().toUpperCase();
-      const spx = c.match(/SPX[A-Z0-9]{8,}/i);
-      if (spx) return spx[0].toUpperCase();
-      const to = c.match(/TO[A-Z0-9]{6,}/i);
-      if (to) return to[0].toUpperCase();
-      return c.replace(/[^A-Z0-9\-]/g, '');
+      let c=String(t).trim().toUpperCase();
+      const spx=c.match(/SPX[A-Z0-9]{8,}/i); if(spx) return spx[0].toUpperCase();
+      const to=c.match(/TO[A-Z0-9]{6,}/i); if(to) return to[0].toUpperCase();
+      return c.replace(/[^A-Z0-9\-]/g,'');
     }
-    function clearResi(){document.getElementById('resi').value='';document.getElementById('resi').focus();document.getElementById('result').classList.remove('show');document.getElementById('result').innerHTML=''}
-    function saveToHistory(resi,success,status,courier){let h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');h.unshift({resi,courier:courier||'spx',time:new Date().toISOString(),success,status:status||(success?'Berhasil':'Gagal')});if(h.length>50)h.length=50;localStorage.setItem(HISTORY_KEY,JSON.stringify(h))}
+
+    function clearResi(){
+      document.getElementById('resi').value='';
+      document.getElementById('resi').focus();
+      document.getElementById('result').classList.remove('show');
+      document.getElementById('result').innerHTML='';
+    }
+
+    function saveToHistory(resi,success,status,courier){
+      let h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
+      h.unshift({resi,courier:courier||'spx',time:new Date().toISOString(),success,status:status||(success?'Berhasil':'Gagal')});
+      if(h.length>80) h.length=80;
+      localStorage.setItem(HISTORY_KEY,JSON.stringify(h));
+    }
 
     const resiInput=document.getElementById('resi');
     let lastScanTime=0,buffer='',bufferTimer=null;
-    resiInput.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();const c=cleanResi(this.value);this.value=c;if(c.length>=6)trackResi()}});
-    resiInput.addEventListener('keypress',function(e){const now=Date.now();if(now-lastScanTime>80)buffer='';lastScanTime=now;if(e.key.length===1)buffer+=e.key;clearTimeout(bufferTimer);bufferTimer=setTimeout(()=>{if(buffer.length>=10){const c=cleanResi(buffer);if(c.length>=6){resiInput.value=c;trackResi()}}buffer=''},150)});
-    document.addEventListener('click',e=>{if(e.target.tagName!=='BUTTON'&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'&&!e.target.closest('.tabs'))setTimeout(()=>{if(document.getElementById('panel-track').classList.contains('active'))resiInput.focus()},50)});
-    window.addEventListener('load',()=>resiInput.focus());
-
-    // Auto pilih SPX jika input SPXID
-    resiInput.addEventListener('input',function(){
-      const v=this.value.toUpperCase();
-      if(v.startsWith('SPX')) document.getElementById('courier').value='spx';
+    resiInput.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){e.preventDefault();const c=cleanResi(this.value);this.value=c;if(c.length>=6)trackResi()}
     });
+    resiInput.addEventListener('keypress',function(e){
+      const now=Date.now();if(now-lastScanTime>80)buffer='';lastScanTime=now;
+      if(e.key.length===1)buffer+=e.key;
+      clearTimeout(bufferTimer);
+      bufferTimer=setTimeout(()=>{if(buffer.length>=10){const c=cleanResi(buffer);if(c.length>=6){resiInput.value=c;trackResi()}}buffer=''},150);
+    });
+    resiInput.addEventListener('input',function(){
+      if(this.value.toUpperCase().startsWith('SPX')) document.getElementById('courier').value='spx';
+    });
+    window.addEventListener('load',()=>resiInput.focus());
 
     function toggleScanner(){isScanning?stopScanner():startScanner()}
     function startScanner(){
       document.getElementById('reader').classList.add('show');
       document.getElementById('scannerControls').classList.add('show');
-      html5QrCode=new Html5Qrcode("reader");
-      html5QrCode.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:140},aspectRatio:1.6},t=>{document.getElementById('resi').value=cleanResi(t);stopScanner();setTimeout(()=>trackResi(),250)},()=>{}).then(()=>isScanning=true).catch(()=>{alert('Gagal akses kamera');stopScanner()});
+      html5QrCode=new Html5Qrcode('reader');
+      html5QrCode.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:140},aspectRatio:1.6},
+        t=>{document.getElementById('resi').value=cleanResi(t);stopScanner();setTimeout(()=>trackResi(),250)},
+        ()=>{}
+      ).then(()=>isScanning=true).catch(()=>{alert('Gagal akses kamera');stopScanner()});
     }
-    function stopScanner(){if(html5QrCode&&isScanning)html5QrCode.stop().then(()=>{html5QrCode.clear();isScanning=false});document.getElementById('reader').classList.remove('show');document.getElementById('scannerControls').classList.remove('show');isScanning=false;setTimeout(()=>resiInput.focus(),200)}
+    function stopScanner(){
+      if(html5QrCode&&isScanning) html5QrCode.stop().then(()=>{html5QrCode.clear();isScanning=false}).catch(()=>{});
+      document.getElementById('reader').classList.remove('show');
+      document.getElementById('scannerControls').classList.remove('show');
+      isScanning=false;
+      setTimeout(()=>resiInput.focus(),200);
+    }
 
     async function trackResi(){
       let resi=cleanResi(document.getElementById('resi').value);
-      const courier=document.getElementById('courier').value;
+      let courier=document.getElementById('courier').value;
+      if(resi.startsWith('SPX')||resi.startsWith('TO')) courier='spx';
       document.getElementById('resi').value=resi;
-      const resultEl=document.getElementById('result'),loadingEl=document.getElementById('loading'),btn=document.getElementById('btnTrack');
-      if(!resi||resi.length<6){alert('Nomor resi terlalu pendek / tidak valid');resiInput.focus();return}
+      document.getElementById('courier').value=courier;
+      const resultEl=document.getElementById('result');
+      const loadingEl=document.getElementById('loading');
+      const btn=document.getElementById('btnTrack');
+      if(!resi||resi.length<6){alert('Nomor resi terlalu pendek');resiInput.focus();return}
       resultEl.classList.remove('show');resultEl.innerHTML='';loadingEl.classList.add('show');btn.disabled=true;
       try{
         const r=await fetch(`/api/track?resi=${encodeURIComponent(resi)}&courier=${encodeURIComponent(courier)}`);
         const j=await r.json();
-        if(j.success&&j.data){renderResult(j,resi,courier);saveToHistory(resi,true,j.data?.data?.status||'Berhasil',courier)}
-        else{
-          resultEl.innerHTML=`<div class="error-box"><strong>${j.message||'Gagal mengambil data'}</strong><br><br>Pastikan nomor resi & kurir sudah benar.<br>Untuk kurir non-SPX, pastikan BINDERBYTE_API_KEY sudah diset.</div>`;
-          resultEl.classList.add('show');saveToHistory(resi,false,'Gagal',courier);
+        if(j.success&&j.data){
+          renderResult(j,resi,courier);
+          saveToHistory(resi,true,j.data?.data?.status||'Berhasil',courier);
+        }else{
+          resultEl.innerHTML=`<div class="error-box"><strong>${j.message||'Gagal mengambil data'}</strong><br><br>Pastikan resi & kurir benar.<br>Non-SPX butuh BINDERBYTE_API_KEY di Cloudflare.</div>`;
+          resultEl.classList.add('show');
+          saveToHistory(resi,false,'Gagal',courier);
         }
       }catch(e){
-        resultEl.innerHTML=`<div class="error-box"><strong>Gagal terhubung ke server</strong><br><br>Coba lagi nanti.</div>`;
-        resultEl.classList.add('show');saveToHistory(resi,false,'Error',courier);
+        resultEl.innerHTML=`<div class="error-box"><strong>Gagal terhubung ke server</strong></div>`;
+        resultEl.classList.add('show');
+        saveToHistory(resi,false,'Error',courier);
       }
       loadingEl.classList.remove('show');btn.disabled=false;setTimeout(()=>resiInput.focus(),300);
     }
 
-    // Koordinat kasar DC/Hub umum (bisa diperluas)
-    const KNOWN_LOCS = {
-      'siborong - borong dc': [2.2167, 98.9500],
-      'siborong-borong dc': [2.2167, 98.9500],
-      'siborong borong dc': [2.2167, 98.9500],
-      'medan amplas dc': [3.5197, 98.6992],
-      'medan amplas': [3.5197, 98.6992],
-      'panyabungan hub': [0.8500, 99.5500],
-      'panyabungan': [0.8500, 99.5500],
-      'jakarta': [-6.2088, 106.8456],
-      'surabaya': [-7.2575, 112.7521],
-      'bandung': [-6.9175, 107.6191],
-      'medan': [3.5952, 98.6722]
-    };
-
-    function extractLocations(msg){
+    function extractBracketLocs(msg){
       if(!msg) return [];
-      const locs=[];
-      const brackets = msg.match(/\[([^\]]+)\]/g) || [];
+      const out=[];
+      const brackets=msg.match(/\[([^\]]+)\]/g)||[];
       brackets.forEach(b=>{
-        const name = b.replace(/[\[\]]/g,'').trim();
-        if(/^TO\d/i.test(name)) return;
-        if(/^LT[0-9A-Z]/i.test(name)) return;
-        if(/^Ops\d/i.test(name)) return;
-        if(/^\d+$/.test(name)) return;
-        if(name.length < 3) return;
-        locs.push(name);
+        const name=b.replace(/[\[\]]/g,'').trim();
+        if(/^TO\d/i.test(name)||/^LT[0-9A-Z]/i.test(name)||/^Ops\d/i.test(name)||/^\d+$/.test(name)) return;
+        if(name.length<3) return;
+        out.push(name);
       });
-      if(!locs.length){
-        const m = msg.match(/([A-Za-zÀ-ÿ .'\-]+(?:DC|Hub|HUB|Branch|Warehouse|Sortir|Sorting Center)[A-Za-zÀ-ÿ .'\-]*)/i);
-        if(m) locs.push(m[1].trim());
-      }
-      return [...new Set(locs)];
-    }
-
-    function mapsUrl(query){
-      return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query + ', Indonesia');
-    }
-
-    async function geocode(query){
-      const key = query.toLowerCase().trim();
-      for(const [k,v] of Object.entries(KNOWN_LOCS)){
-        if(key.includes(k) || k.includes(key)) return v;
-      }
-      try{
-        const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=id&q=' + encodeURIComponent(query + ', Indonesia');
-        const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        const data = await r.json();
-        if(data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-      }catch(e){}
-      return null;
-    }
-
-    const mapInstances = {};
-
-    async function openMapFor(el, loc){
-      document.querySelectorAll('.map-box.show').forEach(b=>{
-        if(b.previousElementSibling !== el) b.classList.remove('show');
-      });
-
-      let box = el.nextElementSibling;
-      if(box && box.classList.contains('map-box')){
-        box.classList.toggle('show');
-        return;
-      }
-
-      const id = 'map_' + Math.random().toString(36).slice(2,9);
-      box = document.createElement('div');
-      box.className = 'map-box show';
-      box.innerHTML = '<div class="map-loading">Memuat peta...</div><div class="leaflet-map" id="'+id+'" style="display:none"></div>'+
-        '<div class="map-actions"><a href="'+mapsUrl(loc)+'" target="_blank" rel="noopener">Buka di Google Maps</a></div>';
-      el.insertAdjacentElement('afterend', box);
-
-      const coords = await geocode(loc);
-      const loading = box.querySelector('.map-loading');
-      const mapDiv = box.querySelector('.leaflet-map');
-
-      if(!coords){
-        if(loading) loading.textContent = 'Lokasi tidak ditemukan di peta. Coba buka Google Maps.';
-        return;
-      }
-
-      if(loading) loading.style.display = 'none';
-      mapDiv.style.display = 'block';
-
-      // delay agar container punya ukuran
-      setTimeout(()=>{
-        try{
-          if(mapInstances[id]){ mapInstances[id].remove(); }
-          const map = L.map(id, { scrollWheelZoom: false }).setView(coords, 14);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-          }).addTo(map);
-          L.marker(coords).addTo(map).bindPopup('<b>'+loc+'</b>').openPopup();
-          mapInstances[id] = map;
-          setTimeout(()=> map.invalidateSize(), 200);
-        }catch(e){
-          mapDiv.innerHTML = '<div class="map-loading">Gagal memuat peta bawaan</div>';
-        }
-      }, 50);
+      return out;
     }
 
     function renderResult(j,resi,courier){
       const resultEl=document.getElementById('result');
       const data=j.data;
-      const list=data?.data?.tracking_list||data?.data?.tracking||[];
-      const status=data?.data?.status||data?.data?.current_status||data?.summary?.status||'Tidak diketahui';
+      const inner=data?.data||{};
+      const list=inner.tracking_list||data?.tracking_list||[];
+      const status=inner.status||inner.current_status||data?.summary?.status||'Tidak diketahui';
       const courierName=(courier||j.courier||'spx').toUpperCase();
+      const detail=data?.detail||{};
+      const summary=data?.summary||{};
+
+      // Field tujuan / penerima dari API (sering kosong di SPX publik)
+      const recipient=inner.recipient_name||detail.receiver||detail.consignee||summary.receiver||'';
+      const phone=inner.phone||detail.phone||'';
+      const deliveryType=inner.delivery_type||detail.service||summary.service||'';
+      const dest=detail.destination||summary.destination||inner.destination||'';
+      const origin=detail.origin||summary.origin||inner.origin||'';
+
+      // Perkiraan lokasi terakhir dari pesan tracking
+      let lastLoc='';
+      for(const item of list){
+        const locs=extractBracketLocs(item.message||item.status||'');
+        if(locs.length){ lastLoc=locs[0]; break; }
+      }
+
       let html=`<div class="status-box"><div class="status-title">Kurir</div><div class="status-value">${courierName}</div></div>
         <div class="status-box"><div class="status-title">Nomor Resi</div><div class="status-value">${resi}</div></div>
         <div class="status-box"><div class="status-title">Status Terakhir</div><div class="status-value">${status}</div></div>`;
-      if(list.length>0){
-        html+=`<div style="margin-top:6px"><strong style="font-size:13px">Riwayat Perjalanan</strong>
-          <div style="font-size:11px;color:#888;margin:4px 0 8px">Ketuk baris yang ada 🗺️ untuk lihat peta</div>`;
-        list.forEach((item,idx)=>{
+      if(deliveryType) html+=`<div class="status-box"><div class="status-title">Layanan</div><div class="status-value">${deliveryType}</div></div>`;
+      if(origin) html+=`<div class="status-box"><div class="status-title">Asal</div><div class="status-value">${origin}</div></div>`;
+      if(dest) html+=`<div class="status-box"><div class="status-title">Tujuan</div><div class="status-value">${dest}</div></div>`;
+      if(recipient) html+=`<div class="status-box"><div class="status-title">Penerima</div><div class="status-value">${recipient}</div></div>`;
+      if(phone) html+=`<div class="status-box"><div class="status-title">Telepon</div><div class="status-value">${phone}</div></div>`;
+      if(lastLoc) html+=`<div class="status-box"><div class="status-title">Lokasi Terakhir (dari tracking)</div><div class="status-value">${lastLoc}</div></div>`;
+      if(!dest && !recipient && courierName==='SPX'){
+        html+=`<div class="status-box"><div class="status-title">Tujuan / Penerima</div><div class="status-value" style="font-weight:500;color:#888;font-size:13px">Tidak tersedia di API publik SPX (data sensitif). Cek di WMS internal.</div></div>`;
+      }
+      if(list.length){
+        html+=`<div style="margin-top:6px"><strong style="font-size:13px">Riwayat Perjalanan</strong>`;
+        list.forEach(item=>{
           const time=item.timestamp?new Date(item.timestamp*1000).toLocaleString('id-ID'):(item.time||item.date||'-');
           const msg=item.message||item.status||item.description||'-';
-          const locs=extractLocations(msg);
-          const hasMap=locs.length>0;
-          const loc=locs[0]||'';
-          const safeLoc=loc.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-          html+=`<div class="timeline-item${hasMap?' has-map':''}" ${hasMap?`onclick="openMapFor(this,'${safeLoc}')"`:''}>
-            <div class="dot"></div>
-            <div style="flex:1">
-              <div class="timeline-time">${time}</div>
-              <div class="timeline-msg">${msg}</div>
-              ${hasMap?`<div class="map-hint">Ketuk untuk peta: ${loc}</div>`:''}
-            </div>
-          </div>`;
+          html+=`<div class="timeline-item"><div class="dot"></div><div><div class="timeline-time">${time}</div><div class="timeline-msg">${msg}</div></div></div>`;
         });
         html+=`</div>`;
       }
@@ -356,28 +351,186 @@
     function trackOfficial(){
       const resi=cleanResi(document.getElementById('resi').value);
       const courier=document.getElementById('courier').value;
-      if(!resi){alert('Masukkan nomor resi dulu!');resiInput.focus();return}
+      if(!resi){alert('Masukkan nomor resi dulu');resiInput.focus();return}
       const map={
         spx:`https://spx.co.id/?trackingNumber=${encodeURIComponent(resi)}`,
-        jne:`https://www.jne.co.id/id/tracking/trace`,
-        jnt:`https://jet.co.id/track`,
-        sicepat:`https://www.sicepat.com/checkAwb`,
-        tiki:`https://www.tiki.id/id/tracking`,
-        anteraja:`https://anteraja.id/tracking`,
-        pos:`https://www.posindonesia.co.id/id/tracking`
+        jne:'https://www.jne.co.id/id/tracking/trace',
+        jnt:'https://jet.co.id/track',
+        sicepat:'https://www.sicepat.com/checkAwb',
+        tiki:'https://www.tiki.id/id/tracking',
+        anteraja:'https://anteraja.id/tracking',
+        pos:'https://www.posindonesia.co.id/id/tracking'
       };
       window.open(map[courier]||map.spx,'_blank');
-      setTimeout(()=>resiInput.focus(),500);
     }
 
     function loadHistory(){
       const list=document.getElementById('historyList');
       const history=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
-      if(history.length===0){list.innerHTML=`<div class="empty">Belum ada history</div>`;return}
-      list.innerHTML=history.map(item=>`<div class="history-item" onclick="reuseResi('${item.resi}','${item.courier||'spx'}')"><div><div class="history-resi">${item.resi}</div><div class="history-meta">${(item.courier||'spx').toUpperCase()} • ${new Date(item.time).toLocaleString('id-ID')}</div></div><div class="history-status ${item.success?'':'fail'}">${item.success?'OK':'Gagal'}</div></div>`).join('');
+      if(!history.length){list.innerHTML=`<div class="empty">Belum ada history</div>`;return}
+      list.innerHTML=history.map(item=>`
+        <div class="history-item" onclick="reuseResi('${item.resi}','${item.courier||'spx'}')">
+          <div>
+            <div class="history-resi">${item.resi}</div>
+            <div class="history-meta">${(item.courier||'spx').toUpperCase()} • ${new Date(item.time).toLocaleString('id-ID')}</div>
+          </div>
+          <div class="history-status ${item.success?'':'fail'}">${item.success?'OK':'Gagal'}</div>
+        </div>`).join('');
     }
-    function reuseResi(resi,courier){document.getElementById('resi').value=resi;if(courier)document.getElementById('courier').value=courier;switchTab('track');setTimeout(()=>trackResi(),200)}
-    function clearHistory(){if(!confirm('Hapus semua history?'))return;localStorage.removeItem(HISTORY_KEY);loadHistory()}
+    function reuseResi(resi,courier){
+      document.getElementById('resi').value=resi;
+      if(courier) document.getElementById('courier').value=courier;
+      switchTab('track');
+      setTimeout(()=>trackResi(),200);
+    }
+    function clearHistory(){
+      if(!confirm('Hapus semua history?')) return;
+      localStorage.removeItem(HISTORY_KEY);
+      loadHistory();
+    }
+
+    
+    // ===== BATCH CONTINUOUS CAMERA SCAN =====
+    let batchHtml5Qr=null, batchScanning=false, lastBatchScanCode='', lastBatchScanAt=0;
+
+    function addResiToBatch(code){
+      const cleaned = cleanResi(code);
+      if(!cleaned || cleaned.length < 6) return false;
+      const ta = document.getElementById('batchList');
+      const existing = parseBatchList(ta.value);
+      if(existing.includes(cleaned)){
+        // sudah ada — beri feedback singkat
+        const hint = document.getElementById('batchScanHint');
+        if(hint){ hint.textContent = 'Sudah ada: '+cleaned; setTimeout(()=>{hint.textContent='Scan kamera: setiap barcode otomatis ditambah ke daftar'}, 1200); }
+        return false;
+      }
+      ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + cleaned;
+      const hint = document.getElementById('batchScanHint');
+      if(hint){ hint.textContent = 'Ditambah ('+parseBatchList(ta.value).length+'): '+cleaned; }
+      // beep opsional via vibrate
+      if(navigator.vibrate) navigator.vibrate(40);
+      return true;
+    }
+
+    function toggleBatchScanner(){
+      batchScanning ? stopBatchScanner() : startBatchScanner();
+    }
+
+    function startBatchScanner(){
+      // pastikan scanner tab track mati
+      try{ stopScanner(); }catch(e){}
+      const reader = document.getElementById('batchReader');
+      reader.style.display = 'block';
+      document.getElementById('btnBatchScan').style.display = 'none';
+      document.getElementById('btnBatchScanStop').style.display = 'flex';
+      batchHtml5Qr = new Html5Qrcode('batchReader');
+      batchHtml5Qr.start(
+        { facingMode: 'environment' },
+        { fps: 8, qrbox: { width: 280, height: 140 }, aspectRatio: 1.7 },
+        (decodedText) => {
+          const now = Date.now();
+          const code = cleanResi(decodedText);
+          // anti-duplikat scan beruntun (kamera baca berulang)
+          if(code === lastBatchScanCode && (now - lastBatchScanAt) < 2500) return;
+          lastBatchScanCode = code;
+          lastBatchScanAt = now;
+          addResiToBatch(decodedText);
+        },
+        () => {}
+      ).then(()=>{ batchScanning = true; })
+       .catch(()=>{
+         alert('Gagal akses kamera');
+         stopBatchScanner();
+       });
+    }
+
+    function stopBatchScanner(){
+      if(batchHtml5Qr && batchScanning){
+        batchHtml5Qr.stop().then(()=>{ try{batchHtml5Qr.clear()}catch(e){} batchScanning=false; }).catch(()=>{ batchScanning=false; });
+      }
+      batchScanning = false;
+      const reader = document.getElementById('batchReader');
+      if(reader) reader.style.display = 'none';
+      const btn = document.getElementById('btnBatchScan');
+      const btnStop = document.getElementById('btnBatchScanStop');
+      if(btn) btn.style.display = 'flex';
+      if(btnStop) btnStop.style.display = 'none';
+    }
+
+    // ===== BATCH =====
+    function parseBatchList(raw){
+      return String(raw||'')
+        .split(/[\n,;]+/)
+        .map(s=>cleanResi(s))
+        .filter(s=>s.length>=6)
+        .filter((v,i,a)=>a.indexOf(v)===i);
+    }
+    function clearBatch(){
+      stopBatchScanner();
+      document.getElementById('batchList').value='';
+      document.getElementById('batchResults').innerHTML='';
+      document.getElementById('batchProgress').textContent='';
+      lastBatchSummary='';
+      const hint=document.getElementById('batchScanHint'); if(hint) hint.textContent='Scan kamera: setiap barcode otomatis ditambah ke daftar';
+    }
+    function copyBatchResults(){
+      if(!lastBatchSummary){alert('Belum ada hasil batch');return}
+      navigator.clipboard.writeText(lastBatchSummary).then(()=>alert('Hasil disalin')).catch(()=>prompt('Salin manual:', lastBatchSummary));
+    }
+    async function runBatch(){
+      if(batchRunning) return;
+      const list=parseBatchList(document.getElementById('batchList').value);
+      const courierDefault=document.getElementById('batchCourier').value;
+      const box=document.getElementById('batchResults');
+      const prog=document.getElementById('batchProgress');
+      const btn=document.getElementById('btnBatch');
+      if(!list.length){alert('Masukkan minimal 1 nomor resi');return}
+      if(list.length>40 && !confirm(list.length+' resi. Lanjutkan?')) return;
+
+      batchRunning=true; btn.disabled=true; box.innerHTML=''; lastBatchSummary='';
+      const lines=[];
+
+      for(let i=0;i<list.length;i++){
+        const resi=list[i];
+        let useCourier=courierDefault;
+        if(resi.startsWith('SPX')||resi.startsWith('TO')) useCourier='spx';
+        prog.textContent=`Memproses ${i+1} / ${list.length} : ${resi}`;
+
+        let ok=false, status='-', detail='';
+        try{
+          const r=await fetch(`/api/track?resi=${encodeURIComponent(resi)}&courier=${encodeURIComponent(useCourier)}`);
+          const j=await r.json();
+          if(j.success&&j.data){
+            ok=true;
+            status=j.data?.data?.status||j.data?.data?.current_status||j.data?.summary?.status||'OK';
+            const ev=j.data?.data?.tracking_list||[];
+            if(ev[0]) detail=ev[0].message||ev[0].status||'';
+            saveToHistory(resi,true,status,useCourier);
+          }else{
+            status=j.message||'Gagal';
+            saveToHistory(resi,false,'Gagal',useCourier);
+          }
+        }catch(e){
+          status='Error koneksi';
+          saveToHistory(resi,false,'Error',useCourier);
+        }
+
+        const item=document.createElement('div');
+        item.className='batch-item '+(ok?'ok':'fail');
+        item.innerHTML=`<div class="bi-head"><div class="bi-resi">${i+1}. ${resi}</div><div class="bi-badge ${ok?'':'fail'}">${ok?'OK':'Gagal'}</div></div>
+          <div class="bi-meta">${useCourier.toUpperCase()}</div>
+          <div class="bi-status">${status}</div>
+          ${detail?`<div class="bi-meta">${detail}</div>`:''}`;
+        box.appendChild(item);
+        lines.push(`${i+1}. ${resi} [${useCourier.toUpperCase()}] => ${ok?'OK':'GAGAL'} | ${status}${detail?' | '+detail:''}`);
+
+        if(i<list.length-1) await new Promise(r=>setTimeout(r, useCourier==='spx'?400:700));
+      }
+
+      lastBatchSummary=lines.join('\n');
+      prog.textContent=`Selesai: ${list.length} resi`;
+      batchRunning=false; btn.disabled=false;
+    }
   </script>
 </body>
 </html>
