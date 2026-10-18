@@ -8,6 +8,8 @@
   <title>Cek Resi Multi Kurir</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -41,11 +43,20 @@
     .status-box{background:#f8f9fa;border-radius:12px;padding:12px;margin-bottom:8px}
     .status-title{font-size:11px;color:#888;margin-bottom:2px}
     .status-value{font-size:15px;font-weight:600;word-break:break-all}
-    .timeline-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #eee}
+    .timeline-item{display:flex;gap:10px;padding:10px 8px;border-bottom:1px solid #eee;border-radius:10px;cursor:pointer;transition:background .15s}
     .timeline-item:last-child{border-bottom:none}
+    .timeline-item:hover,.timeline-item:active{background:#fff5f3}
+    .timeline-item.has-map .timeline-msg::after{content:' 🗺️';font-size:12px}
     .dot{width:8px;height:8px;background:#ee4d2d;border-radius:50%;margin-top:5px;flex-shrink:0}
     .timeline-time{font-size:11px;color:#999}
     .timeline-msg{font-size:13px;color:#333;margin-top:1px}
+    .map-hint{font-size:11px;color:#ee4d2d;margin-top:4px;font-weight:600}
+    .map-box{display:none;margin:8px 0 12px;border-radius:12px;overflow:hidden;border:1px solid #eee;background:#f8f9fa}
+    .map-box.show{display:block}
+    .map-box .leaflet-map{width:100%;height:240px;z-index:1}
+    .map-box .map-actions{display:flex;gap:8px;padding:8px;background:#fff}
+    .map-box .map-actions a,.map-box .map-actions button{flex:1;text-align:center;padding:8px;border-radius:8px;background:#ee4d2d;color:#fff;text-decoration:none;font-size:12px;font-weight:600;border:none;cursor:pointer}
+    .map-box .map-loading{padding:40px 12px;text-align:center;color:#888;font-size:13px}
     .error-box{background:#fff5f3;border:1px solid #ffd0c7;color:#c0392b;padding:12px;border-radius:12px;font-size:13px;text-align:center;line-height:1.45}
     .loading{text-align:center;padding:16px;color:#666;display:none;font-size:14px}
     .loading.show{display:block}
@@ -206,6 +217,109 @@
       loadingEl.classList.remove('show');btn.disabled=false;setTimeout(()=>resiInput.focus(),300);
     }
 
+    // Koordinat kasar DC/Hub umum (bisa diperluas)
+    const KNOWN_LOCS = {
+      'siborong - borong dc': [2.2167, 98.9500],
+      'siborong-borong dc': [2.2167, 98.9500],
+      'siborong borong dc': [2.2167, 98.9500],
+      'medan amplas dc': [3.5197, 98.6992],
+      'medan amplas': [3.5197, 98.6992],
+      'panyabungan hub': [0.8500, 99.5500],
+      'panyabungan': [0.8500, 99.5500],
+      'jakarta': [-6.2088, 106.8456],
+      'surabaya': [-7.2575, 112.7521],
+      'bandung': [-6.9175, 107.6191],
+      'medan': [3.5952, 98.6722]
+    };
+
+    function extractLocations(msg){
+      if(!msg) return [];
+      const locs=[];
+      const brackets = msg.match(/\[([^\]]+)\]/g) || [];
+      brackets.forEach(b=>{
+        const name = b.replace(/[\[\]]/g,'').trim();
+        if(/^TO\d/i.test(name)) return;
+        if(/^LT[0-9A-Z]/i.test(name)) return;
+        if(/^Ops\d/i.test(name)) return;
+        if(/^\d+$/.test(name)) return;
+        if(name.length < 3) return;
+        locs.push(name);
+      });
+      if(!locs.length){
+        const m = msg.match(/([A-Za-zÀ-ÿ .'\-]+(?:DC|Hub|HUB|Branch|Warehouse|Sortir|Sorting Center)[A-Za-zÀ-ÿ .'\-]*)/i);
+        if(m) locs.push(m[1].trim());
+      }
+      return [...new Set(locs)];
+    }
+
+    function mapsUrl(query){
+      return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query + ', Indonesia');
+    }
+
+    async function geocode(query){
+      const key = query.toLowerCase().trim();
+      for(const [k,v] of Object.entries(KNOWN_LOCS)){
+        if(key.includes(k) || k.includes(key)) return v;
+      }
+      try{
+        const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=id&q=' + encodeURIComponent(query + ', Indonesia');
+        const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const data = await r.json();
+        if(data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      }catch(e){}
+      return null;
+    }
+
+    const mapInstances = {};
+
+    async function openMapFor(el, loc){
+      document.querySelectorAll('.map-box.show').forEach(b=>{
+        if(b.previousElementSibling !== el) b.classList.remove('show');
+      });
+
+      let box = el.nextElementSibling;
+      if(box && box.classList.contains('map-box')){
+        box.classList.toggle('show');
+        return;
+      }
+
+      const id = 'map_' + Math.random().toString(36).slice(2,9);
+      box = document.createElement('div');
+      box.className = 'map-box show';
+      box.innerHTML = '<div class="map-loading">Memuat peta...</div><div class="leaflet-map" id="'+id+'" style="display:none"></div>'+
+        '<div class="map-actions"><a href="'+mapsUrl(loc)+'" target="_blank" rel="noopener">Buka di Google Maps</a></div>';
+      el.insertAdjacentElement('afterend', box);
+
+      const coords = await geocode(loc);
+      const loading = box.querySelector('.map-loading');
+      const mapDiv = box.querySelector('.leaflet-map');
+
+      if(!coords){
+        if(loading) loading.textContent = 'Lokasi tidak ditemukan di peta. Coba buka Google Maps.';
+        return;
+      }
+
+      if(loading) loading.style.display = 'none';
+      mapDiv.style.display = 'block';
+
+      // delay agar container punya ukuran
+      setTimeout(()=>{
+        try{
+          if(mapInstances[id]){ mapInstances[id].remove(); }
+          const map = L.map(id, { scrollWheelZoom: false }).setView(coords, 14);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+          }).addTo(map);
+          L.marker(coords).addTo(map).bindPopup('<b>'+loc+'</b>').openPopup();
+          mapInstances[id] = map;
+          setTimeout(()=> map.invalidateSize(), 200);
+        }catch(e){
+          mapDiv.innerHTML = '<div class="map-loading">Gagal memuat peta bawaan</div>';
+        }
+      }, 50);
+    }
+
     function renderResult(j,resi,courier){
       const resultEl=document.getElementById('result');
       const data=j.data;
@@ -216,11 +330,23 @@
         <div class="status-box"><div class="status-title">Nomor Resi</div><div class="status-value">${resi}</div></div>
         <div class="status-box"><div class="status-title">Status Terakhir</div><div class="status-value">${status}</div></div>`;
       if(list.length>0){
-        html+=`<div style="margin-top:6px"><strong style="font-size:13px">Riwayat Perjalanan</strong>`;
-        list.forEach(item=>{
+        html+=`<div style="margin-top:6px"><strong style="font-size:13px">Riwayat Perjalanan</strong>
+          <div style="font-size:11px;color:#888;margin:4px 0 8px">Ketuk baris yang ada 🗺️ untuk lihat peta</div>`;
+        list.forEach((item,idx)=>{
           const time=item.timestamp?new Date(item.timestamp*1000).toLocaleString('id-ID'):(item.time||item.date||'-');
           const msg=item.message||item.status||item.description||'-';
-          html+=`<div class="timeline-item"><div class="dot"></div><div><div class="timeline-time">${time}</div><div class="timeline-msg">${msg}</div></div></div>`;
+          const locs=extractLocations(msg);
+          const hasMap=locs.length>0;
+          const loc=locs[0]||'';
+          const safeLoc=loc.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+          html+=`<div class="timeline-item${hasMap?' has-map':''}" ${hasMap?`onclick="openMapFor(this,'${safeLoc}')"`:''}>
+            <div class="dot"></div>
+            <div style="flex:1">
+              <div class="timeline-time">${time}</div>
+              <div class="timeline-msg">${msg}</div>
+              ${hasMap?`<div class="map-hint">Ketuk untuk peta: ${loc}</div>`:''}
+            </div>
+          </div>`;
         });
         html+=`</div>`;
       }
