@@ -99,7 +99,7 @@
 
       <!-- TRACK -->
       <div id="panel-track" class="panel active">
-        <div class="mode-info">Mode PDA aktif • Pilih kurir lalu tembak barcode</div>
+        <div class="mode-info">Mode PDA laser aktif • Fokus otomatis di kotak resi</div>
         <label for="courier">Kurir</label>
         <select id="courier">
           <option value="spx">Shopee Express (SPX)</option>
@@ -224,20 +224,81 @@
     }
 
     const resiInput=document.getElementById('resi');
-    let lastScanTime=0,buffer='',bufferTimer=null;
+    let pdaTimer=null, lastPdaValue='', pdaLock=false;
+
+    function focusResi(){
+      if(!document.getElementById('panel-track')?.classList.contains('active')) return;
+      try{
+        resiInput.focus({preventScroll:true});
+        // taruh kursor di akhir
+        const len=resiInput.value.length;
+        resiInput.setSelectionRange(len,len);
+      }catch(e){ try{resiInput.focus()}catch(e2){} }
+    }
+
+    function handlePdaComplete(){
+      if(pdaLock) return;
+      let raw=resiInput.value;
+      // beberapa laser kirim prefix symbology / suffix CR
+      raw=raw.replace(/[\r\n\t]+/g,'').trim();
+      const c=cleanResi(raw);
+      if(!c || c.length<6) return;
+      pdaLock=true;
+      resiInput.value=c;
+      if(c.startsWith('SPX')||c.startsWith('TO')) document.getElementById('courier').value='spx';
+      trackResi().finally(()=>{
+        // siap scan berikutnya
+        setTimeout(()=>{
+          resiInput.value='';
+          pdaLock=false;
+          focusResi();
+        }, 350);
+      });
+    }
+
+    // Enter / Tab dari laser PDA
     resiInput.addEventListener('keydown',function(e){
-      if(e.key==='Enter'){e.preventDefault();const c=cleanResi(this.value);this.value=c;if(c.length>=6)trackResi()}
+      if(e.key==='Enter' || e.key==='Tab'){
+        e.preventDefault();
+        handlePdaComplete();
+      }
     });
-    resiInput.addEventListener('keypress',function(e){
-      const now=Date.now();if(now-lastScanTime>80)buffer='';lastScanTime=now;
-      if(e.key.length===1)buffer+=e.key;
-      clearTimeout(bufferTimer);
-      bufferTimer=setTimeout(()=>{if(buffer.length>=10){const c=cleanResi(buffer);if(c.length>=6){resiInput.value=c;trackResi()}}buffer=''},150);
-    });
+
+    // Laser sering hanya memicu event input (bukan keypress)
     resiInput.addEventListener('input',function(){
-      if(this.value.toUpperCase().startsWith('SPX')) document.getElementById('courier').value='spx';
+      const v=this.value;
+      if(v.toUpperCase().startsWith('SPX')||v.toUpperCase().startsWith('TO')){
+        document.getElementById('courier').value='spx';
+      }
+      // debounce: laser selesai mengetik dalam ~80-200ms
+      clearTimeout(pdaTimer);
+      if(cleanResi(v).length>=8){
+        pdaTimer=setTimeout(()=>{
+          // jika ada terminator tersembunyi atau laser tanpa Enter
+          if(document.activeElement===resiInput && !pdaLock){
+            const c=cleanResi(resiInput.value);
+            if(c.length>=10) handlePdaComplete();
+          }
+        }, 200);
+      }
     });
-    window.addEventListener('load',()=>resiInput.focus());
+
+    // jaga fokus terus di tab Cek Resi (penting untuk laser)
+    document.addEventListener('click',function(e){
+      if(!document.getElementById('panel-track')?.classList.contains('active')) return;
+      const tag=(e.target.tagName||'').toLowerCase();
+      if(tag==='button'||tag==='select'||tag==='a'||tag==='textarea') return;
+      if(e.target.closest('.tabs')) return;
+      setTimeout(focusResi, 30);
+    });
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden) setTimeout(focusResi,100); });
+    window.addEventListener('load',()=>setTimeout(focusResi,200));
+    // refocus berkala ringan saat di tab track
+    setInterval(()=>{
+      if(document.getElementById('panel-track')?.classList.contains('active') && !pdaLock){
+        if(document.activeElement!==resiInput && document.activeElement?.tagName!=='SELECT') focusResi();
+      }
+    }, 1500);
 
     function toggleScanner(){isScanning?stopScanner():startScanner()}
     function startScanner(){
